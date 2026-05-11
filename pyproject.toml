@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kallos"
+version = "0.1.0"
+description = "A simple beautifier for photos. Sliders, not menus."
+requires-python = ">=3.10"
+readme = "README.md"
+license = { text = "MIT" }
+dependencies = [
+    "fastapi>=0.115,<0.116",
+    "uvicorn[standard]>=0.32,<0.33",
+    "numpy>=1.26,<2.0",
+    "opencv-python-headless>=4.10,<4.11",
+    "Pillow>=10.4,<11",
+    "rawpy>=0.24,<0.25",
+    "scipy>=1.14,<1.15",
+    "onnxruntime>=1.19,<1.20",
+    "piexif>=1.1,<1.2",
+    "python-multipart>=0.0.9,<0.1",
+    "tqdm>=4.66,<5",
+    "tifffile>=2024.7,<2025",
+    "pillow-heif>=0.18,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0,<9",
+    "ruff>=0.6,<0.7",
+    "mypy>=1.11,<2",
+]
+
+[tool.setuptools.packages.find]
+include = ["kallos*"]
+
+[tool.setuptools.package-data]
+kallos = ["static/*", "static/**/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RET", "N"]
+ignore = ["E501"]  # ruff format handles long lines
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true
+files = ["kallos"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

@@ -1,0 +1,13 @@
+fastapi>=0.115,<0.116
+uvicorn[standard]>=0.32,<0.33
+numpy>=1.26,<2.0
+opencv-python-headless>=4.10,<4.11
+Pillow>=10.4,<11
+rawpy>=0.24,<0.25
+scipy>=1.14,<1.15
+onnxruntime>=1.19,<1.20
+piexif>=1.1,<1.2
+python-multipart>=0.0.9,<0.1
+tqdm>=4.66,<5
+tifffile>=2024.7,<2025
+pillow-heif>=0.18,<1
