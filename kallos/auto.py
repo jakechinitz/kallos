@@ -62,6 +62,34 @@ def auto_settings(
     )
 
 
+def auto_for_text(
+    *,
+    exif: ExifSummary | None = None,
+) -> Settings:
+    """Auto Enhance tuned for text-heavy shots (book spines, signs, documents).
+
+    Same philosophy as `auto_settings` — only touches detail controls,
+    leaves the camera's exposure/color alone — but pushes Sharpen high
+    enough that the adaptive radius reaches letterform-tight territory
+    (~0.85 px). AI Deblur is enabled by default since text is the canonical
+    deblur use case (shake softens letterforms the most).
+    """
+    exif = exif or ExifSummary()
+    return Settings(
+        brightness=0.0,
+        contrast=0.0,
+        warmth=0.0,
+        vibrance=0.0,
+        clarity=30.0,
+        sharpen=50.0,
+        denoise=0.0,
+        # Always-on for text — even if EXIF doesn't flag shake, deblur tends
+        # to help text legibility more than it hurts anything else.
+        ai_deblur=True,
+        wb_preset="as_shot",
+    )
+
+
 def _looks_shaky(exif: ExifSummary) -> bool:
     """1 / (focal_length × 1.5) reciprocal rule — when violated, the shot is
     a strong handheld-shake candidate and AI Deblur should auto-enable."""

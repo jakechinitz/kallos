@@ -30,7 +30,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from PIL import Image as PILImage
 
-from kallos.auto import auto_settings
+from kallos.auto import auto_for_text, auto_settings
 from kallos.io import SaveFormat, save_image
 from kallos.io.load import RAW_EXTENSIONS, load_image, load_image_from_bytes
 from kallos.pipeline import encode_for_display, render_final, render_preview
@@ -125,6 +125,18 @@ def auto() -> JSONResponse:
     if _session is None:
         raise HTTPException(400, "No image loaded")
     s = auto_settings(_session.original, exif=_session.exif, is_raw=_session.is_raw)
+    _session.settings = s
+    _session.invalidate_cache()
+    return JSONResponse(asdict(s))
+
+
+@app.post("/auto-text")
+def auto_text() -> JSONResponse:
+    """Text-optimized Auto: pushes Sharpen + Clarity for book spines / signs /
+    documents, and enables AI Deblur (text suffers most from shake)."""
+    if _session is None:
+        raise HTTPException(400, "No image loaded")
+    s = auto_for_text(exif=_session.exif)
     _session.settings = s
     _session.invalidate_cache()
     return JSONResponse(asdict(s))

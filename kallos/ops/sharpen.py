@@ -30,9 +30,13 @@ def apply_sharpen(img: Image, amount: float, *, radius: float | None = None) -> 
         return img
 
     if radius is None:
-        # Smooth linear interpolation: 1.2 px (presence) → 0.7 px (text-crisp).
+        # Sqrt curve so the tight (text-crisp) radius regime kicks in around the
+        # middle of the slider rather than only at the top. 1.2 px at amount=0
+        # (presence sharpening for landscapes/portraits) → 0.7 px at amount=100
+        # (letterform-tight). At amount=50 you're already at radius ~0.85,
+        # which is the sweet spot for book spines and signage.
         t = max(0.0, min(1.0, amount / 100.0))
-        radius = 1.2 - 0.5 * t
+        radius = 1.2 - 0.5 * (t**0.5)
 
     # OpenCV's RGB<->Lab assumes sRGB-encoded RGB input. We're in linear sRGB,
     # but for sharpening purposes the L channel is still a useful proxy for

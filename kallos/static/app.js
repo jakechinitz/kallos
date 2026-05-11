@@ -37,6 +37,7 @@
   const sliderClip = $("#slider-clip");
   const sliderHandle = $("#slider-handle");
   const btnAuto    = $("#btn-auto");
+  const btnAutoText = $("#btn-auto-text");
   const btnReset   = $("#btn-reset");
   const btnCompare = $("#btn-compare");
   const btnSave    = $("#btn-save");
@@ -96,7 +97,7 @@
     dropZone.hidden = true;
     viewer.hidden = false;
     filenameEl.textContent = data.source_name;
-    [btnAuto, btnReset, btnCompare, btnSave].forEach((b) => (b.disabled = false));
+    [btnAuto, btnAutoText, btnReset, btnCompare, btnSave].forEach((b) => (b.disabled = false));
 
     imgSxsO.src = "/original.jpg";
     imgSlO.src  = "/original.jpg";
@@ -174,21 +175,26 @@
 
   // --- buttons ---
 
-  btnAuto.addEventListener("click", async () => {
+  async function runAuto(endpoint, label) {
     btnAuto.disabled = true;
+    btnAutoText.disabled = true;
     try {
-      const res = await fetch("/auto", { method: "POST" });
+      const res = await fetch(endpoint, { method: "POST" });
       if (!res.ok) throw new Error(await res.text());
       state.settings = { ...state.settings, ...(await res.json()) };
       syncControlsFromState();
       await renderPreview();
-      setStatus("Auto Enhance applied.");
+      setStatus(`${label} applied.`);
     } catch (err) {
-      setStatus(`Auto failed: ${err.message}`, true);
+      setStatus(`${label} failed: ${err.message}`, true);
     } finally {
       btnAuto.disabled = false;
+      btnAutoText.disabled = false;
     }
-  });
+  }
+
+  btnAuto.addEventListener("click", () => runAuto("/auto", "Auto Enhance"));
+  btnAutoText.addEventListener("click", () => runAuto("/auto-text", "Crisp Text"));
 
   btnReset.addEventListener("click", async () => {
     const res = await fetch("/reset", { method: "POST" });
