@@ -14,6 +14,8 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
+from kallos.io.load import ExifSummary
+
 Image = NDArray[np.float32]
 
 
@@ -74,6 +76,8 @@ class Session:
     source_name: str = "image"
     # EXIF bytes captured at load; passed through on save when possible.
     exif_bytes: bytes | None = None
+    # Parsed EXIF (ISO/shutter/focal length) used by Auto Enhance.
+    exif: ExifSummary = field(default_factory=ExifSummary)
 
     def invalidate_cache(self) -> None:
         self.intermediate = None

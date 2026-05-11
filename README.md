@@ -14,7 +14,7 @@ from camera shake.
 - Sliders: Brightness, Contrast, Warmth, Vibrance, Sharpen, Denoise
 - **AI Deblur** toggle for shake recovery (NAFNet motion model, with classical Wiener fallback)
 - **Compare** view modes: edited / side-by-side / wipe-slider
-- Save as JPEG (quality 95), PNG, or 8-bit TIFF with sRGB ICC + EXIF preserved
+- Save as JPEG (quality 95), PNG, or 16-bit TIFF with sRGB ICC + EXIF preserved
 
 ## Run it
 

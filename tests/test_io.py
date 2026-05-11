@@ -29,10 +29,17 @@ def test_png_roundtrip(small_image, tmp_path):
     assert np.mean(np.abs(loaded.image - small_image)) < 0.01
 
 
-def test_tiff_roundtrip(small_image, tmp_path):
+def test_tiff_roundtrip_16bit(small_image, tmp_path):
     out_path = tmp_path / "out.tif"
     save_image(small_image, out_path, SaveFormat.TIFF)
     assert out_path.exists()
+
+    # The file on disk really is 16-bit RGB.
+    import tifffile
+    raw = tifffile.imread(out_path)
+    assert raw.dtype == np.uint16
+    assert raw.shape == (small_image.shape[0], small_image.shape[1], 3)
+
+    # And the round-trip is much tighter than 8-bit would allow.
     loaded = load_image(out_path)
-    # 8-bit TIFF round-trip should be lossless aside from gamma quantization.
-    assert np.mean(np.abs(loaded.image - small_image)) < 0.01
+    assert np.mean(np.abs(loaded.image - small_image)) < 0.001

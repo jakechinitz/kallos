@@ -91,6 +91,7 @@ async def upload(file: UploadFile = File(...)) -> JSONResponse:
         daylight_wb=preview.daylight_wb,
         source_name=preview.source_name,
         exif_bytes=preview.exif_bytes,
+        exif=preview.exif,
     )
 
     h, w = preview.image.shape[:2]
@@ -122,7 +123,7 @@ def reset() -> JSONResponse:
 def auto() -> JSONResponse:
     if _session is None:
         raise HTTPException(400, "No image loaded")
-    s = auto_settings(_session.original)
+    s = auto_settings(_session.original, exif=_session.exif)
     _session.settings = s
     _session.invalidate_cache()
     return JSONResponse(asdict(s))

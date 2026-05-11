@@ -21,7 +21,7 @@ browser  <--HTTP-->  FastAPI app  <-->  pipeline  <-->  ops (pure functions)
 | The look of the app (HTML/CSS/JS) | `kallos/static/` |
 | Which sliders exist and their ranges | `kallos/state.py` (`Settings` dataclass) |
 | The order operations run in | `kallos/pipeline.py` |
-| How "Auto Enhance" picks its values | `kallos/auto.py` |
+| How "Auto Enhance" picks its values | `kallos/auto.py` (reads `ExifSummary` from `kallos/io/load.py`) |
 | One specific operation (e.g. sharpen) | `kallos/ops/<name>.py` |
 | RAW decoding / image loading | `kallos/io/load.py` |
 | Saving JPEG/PNG/TIFF | `kallos/io/save.py` |
