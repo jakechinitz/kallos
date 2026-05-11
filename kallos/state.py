@@ -74,6 +74,10 @@ class Session:
     daylight_wb: tuple[float, float, float, float] | None = None
     # Source filename, used to suggest a save path.
     source_name: str = "image"
+    # True if the original came from a RAW file (rawpy decode), False otherwise.
+    # Auto Enhance uses this to choose between "do the whole job" and "top up
+    # what the camera already did".
+    is_raw: bool = True
     # EXIF bytes captured at load; passed through on save when possible.
     exif_bytes: bytes | None = None
     # Parsed EXIF (ISO/shutter/focal length) used by Auto Enhance.

@@ -84,6 +84,38 @@ def test_warmth_only_partially_corrects_a_cast():
     assert s.warmth > -20.0      # but partial, not maxed
 
 
+def test_jpeg_path_is_lighter_than_raw_path(small_image):
+    raw = auto_settings(small_image, is_raw=True)
+    jpg = auto_settings(small_image, is_raw=False)
+
+    # Camera already sharpened/denoised JPEGs; Auto should hold back.
+    assert jpg.denoise == 0.0
+    assert jpg.sharpen <= raw.sharpen
+    assert jpg.vibrance <= raw.vibrance
+    # Brightness/contrast are scene-dependent, not camera-dependent, so they
+    # should be the same regardless of source.
+    assert jpg.brightness == raw.brightness
+    assert jpg.contrast == raw.contrast
+
+
+def test_jpeg_ignores_iso_for_denoise(small_image):
+    # On a JPEG, the camera already denoised — high ISO shouldn't crank
+    # kallos's denoise on top.
+    s = auto_settings(small_image, exif=ExifSummary(iso=6400), is_raw=False)
+    assert s.denoise == 0.0
+
+
+def test_jpeg_still_enables_deblur_on_shake(small_image):
+    # Shake recovery is the one thing the camera can't do, so JPEG path
+    # must still auto-enable it.
+    s = auto_settings(
+        small_image,
+        exif=ExifSummary(focal_length_35mm=200, shutter_seconds=1 / 60),
+        is_raw=False,
+    )
+    assert s.ai_deblur is True
+
+
 @pytest.mark.parametrize("iso,expected_min,expected_max", [
     (100, 0.0, 0.5),
     (800, 1.5, 5.0),

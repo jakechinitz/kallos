@@ -1,4 +1,4 @@
-"""Auto Enhance — opinionated, Leica-flavored.
+"""Auto Enhance — opinionated, Leica-flavored, source-aware.
 
 Leica's processing ethos (insofar as a list can capture it):
 - Restraint over pump. Colors pure, not boosted. Saturation conservative.
@@ -9,25 +9,26 @@ Leica's processing ethos (insofar as a list can capture it):
 - The camera knows things. ISO, shutter speed, focal length — read them.
 - Noise that lives in the texture is information; smooth flats, never edges.
 
-We translate that into the six sliders kallos exposes:
+We also distinguish RAW from JPEG inputs. A JPEG has already been
+sharpened, denoised, white-balanced, and tone-mapped by the camera; doing
+all of that again is how you ruin photos. For JPEG inputs Auto applies a
+light "top-up" — fixes the things the camera can't (exposure, shake) and
+backs off everything else. For RAW inputs Auto does the whole job, since
+the camera did literally nothing.
 
-- Brightness: push median luminance toward mid-gray, but back off when
-  highlights would clip. Better an under-exposed-feeling result than a
-  blown sky.
-- Contrast: small bump, scaled by how compressed the histogram is.
-- Warmth: detect color cast, but only partially correct it. A warm scene
-  should still feel warm — we just take the curse off.
-- Vibrance: small fixed lift (+8). Restrained on purpose. Skin tones are
-  protected by the vibrance op itself.
-- Sharpen: modest (+12) by default, less if the shot looks shake-blurred,
-  more if it's loaded with fine edges (text, foliage).
-- Denoise: driven by ISO when EXIF is present, otherwise by measured noise
-  in flat patches. Capped low so text doesn't melt.
-- AI Deblur: auto-enabled when the shutter speed violates the
-  1/(focal_length × 1.5) reciprocal-rule guideline — a strong hint of
-  handheld shake.
-- WB preset: "auto" only when the image lacks camera_wb (i.e. not a RAW
-  As-Shot) AND we have no EXIF context.
+Slider choices (RAW baseline; JPEG attenuates most of these):
+
+- Brightness / Contrast: same for both — these are scene-dependent, not
+  camera-dependent.
+- Warmth: only partial cast correction on RAW; near-zero on JPEG unless
+  the cast is severe.
+- Vibrance: +8 RAW, +4 JPEG.
+- Sharpen: ISO/edge-aware (~12 baseline) on RAW; small top-up (~5) on JPEG
+  to compound less with the camera's in-body sharpening.
+- Denoise: ISO-driven on RAW; **zero on JPEG** — the camera already
+  denoised, more would soften your text.
+- AI Deblur: same logic both ways — auto-on for shake, since the camera
+  can't undo motion blur.
 
 Each decision is small and explainable. None of this is a model; all of it
 is photographer-common-sense in code.
@@ -55,23 +56,41 @@ MID_GRAY = 0.18
 HIGHLIGHT_DANGER = 0.85
 
 
-def auto_settings(img: Image, *, exif: ExifSummary | None = None) -> Settings:
-    """Compute Leica-flavored Auto Enhance slider values."""
+def auto_settings(
+    img: Image,
+    *,
+    exif: ExifSummary | None = None,
+    is_raw: bool = True,
+) -> Settings:
+    """Compute Leica-flavored Auto Enhance slider values.
+
+    Pass `is_raw=False` for JPEG/PNG/TIFF inputs so Auto knows the camera
+    already did most of the work and takes a much lighter touch.
+    """
     exif = exif or ExifSummary()
     stats = _measure(img)
 
     brightness = _choose_brightness(stats)
     contrast = _choose_contrast(stats)
-    warmth = _choose_warmth(stats)
-    sharpen = _choose_sharpen(stats, exif)
-    denoise = _choose_denoise(stats, exif)
     deblur = _choose_deblur(exif)
+
+    if is_raw:
+        warmth = _choose_warmth(stats)
+        sharpen = _choose_sharpen(stats, exif)
+        denoise = _choose_denoise(stats, exif)
+        vibrance = 8.0
+    else:
+        # JPEG: lighter touch — camera already sharpened, denoised, WB'd.
+        warmth = _choose_warmth_jpeg(stats)
+        sharpen = _choose_sharpen_jpeg(stats, exif)
+        denoise = 0.0            # camera already denoised; more would soften text
+        vibrance = 4.0
 
     return Settings(
         brightness=round(brightness, 1),
         contrast=round(contrast, 1),
         warmth=round(warmth, 1),
-        vibrance=8.0,       # restrained — Leica colors are pure, not pumped
+        vibrance=vibrance,
         sharpen=round(sharpen, 1),
         denoise=round(denoise, 1),
         ai_deblur=deblur,
@@ -186,6 +205,25 @@ def _choose_denoise(s: _Stats, exif: ExifSummary) -> float:
     # No EXIF: measure.
     noise = s.flat_noise
     return max(0.0, min(20.0, (noise - 0.005) * 1500.0))
+
+
+def _choose_warmth_jpeg(s: _Stats) -> float:
+    """Camera AWB is usually right. Only correct severe casts, and weakly."""
+    r, _g, b = s.illuminant
+    cast = float(r - b)
+    if abs(cast) < 0.08:
+        return 0.0
+    # Strong cast: half the correction we'd apply to RAW.
+    return max(-12.0, min(12.0, -cast * 0.20 * 167.0))
+
+
+def _choose_sharpen_jpeg(s: _Stats, exif: ExifSummary) -> float:
+    """Top-up sharpen. Camera already sharpened — don't compound."""
+    base = 5.0
+    if _looks_shaky(exif):
+        base = 2.0
+    base += min(4.0, s.edge_density * 8.0)
+    return min(15.0, max(0.0, base))
 
 
 def _choose_deblur(exif: ExifSummary) -> bool:
