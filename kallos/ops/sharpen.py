@@ -3,6 +3,11 @@
 Working on L (luminance) only avoids color fringing that you get from a naive
 3-channel unsharp mask. The mask is gated by a soft edge map so flat areas
 (sky, walls) don't get noisy.
+
+The radius (gaussian sigma) auto-adapts to the amount: low amounts use a
+slightly larger radius for "presence" sharpening (landscapes, portraits);
+high amounts use a small radius for crisp letterform sharpening (text, fine
+detail). One slider, two regimes.
 """
 
 from __future__ import annotations
@@ -14,10 +19,20 @@ from numpy.typing import NDArray
 Image = NDArray[np.float32]
 
 
-def apply_sharpen(img: Image, amount: float, *, radius: float = 1.0) -> Image:
-    """Unsharp mask. amount in [0, 100]. radius is the gaussian sigma in pixels."""
+def apply_sharpen(img: Image, amount: float, *, radius: float | None = None) -> Image:
+    """Unsharp mask. amount in [0, 100].
+
+    radius (gaussian sigma in pixels) defaults to an amount-adaptive value:
+    radius=1.2 at amount=0 fading smoothly to radius=0.7 at amount=100.
+    Pass an explicit radius to override.
+    """
     if amount <= 0:
         return img
+
+    if radius is None:
+        # Smooth linear interpolation: 1.2 px (presence) → 0.7 px (text-crisp).
+        t = max(0.0, min(1.0, amount / 100.0))
+        radius = 1.2 - 0.5 * t
 
     # OpenCV's RGB<->Lab assumes sRGB-encoded RGB input. We're in linear sRGB,
     # but for sharpening purposes the L channel is still a useful proxy for
