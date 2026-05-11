@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>kallos</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>kallos</h1>
+      <span class="filename" id="filename"></span>
+    </header>
+
+    <main>
+      <section id="canvas-area">
+        <div id="drop-zone" class="dropzone">
+          <p>Drag a photo here or <label class="link" for="file-input">click to choose one</label>.</p>
+          <p class="hint">JPEG, PNG, TIFF, or Fuji RAF.</p>
+          <input id="file-input" type="file"
+                 accept=".jpg,.jpeg,.png,.tif,.tiff,.raf,.dng,.arw,.nef,.cr2,.cr3,.orf,.rw2">
+        </div>
+
+        <div id="viewer" hidden>
+          <!-- Edited single view -->
+          <div id="view-edited" class="view view-edited">
+            <img id="img-edited" alt="edited">
+          </div>
+          <!-- Side-by-side view -->
+          <div id="view-sxs" class="view view-sxs" hidden>
+            <figure>
+              <img id="img-sxs-original" alt="original">
+              <figcaption>Original</figcaption>
+            </figure>
+            <figure>
+              <img id="img-sxs-edited" alt="edited">
+              <figcaption>Edited</figcaption>
+            </figure>
+          </div>
+          <!-- Slider divider view -->
+          <div id="view-slider" class="view view-slider" hidden>
+            <div class="slider-stack">
+              <img id="img-slider-original" alt="original">
+              <div class="slider-clip" id="slider-clip">
+                <img id="img-slider-edited" alt="edited">
+              </div>
+              <div class="slider-handle" id="slider-handle"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside id="controls">
+        <div class="actions">
+          <button id="btn-auto" class="primary" disabled>Auto Enhance</button>
+          <button id="btn-reset" disabled>Reset</button>
+          <button id="btn-compare" disabled>Compare: Edited</button>
+        </div>
+
+        <div class="sliders">
+          <label>
+            <span>Brightness</span>
+            <input type="range" min="-100" max="100" step="1" value="0" data-key="brightness">
+            <output>0</output>
+          </label>
+          <label>
+            <span>Contrast</span>
+            <input type="range" min="-100" max="100" step="1" value="0" data-key="contrast">
+            <output>0</output>
+          </label>
+          <label>
+            <span>Warmth</span>
+            <input type="range" min="-100" max="100" step="1" value="0" data-key="warmth">
+            <output>0</output>
+          </label>
+          <label>
+            <span>Vibrance</span>
+            <input type="range" min="-100" max="100" step="1" value="0" data-key="vibrance">
+            <output>0</output>
+          </label>
+          <label>
+            <span>Sharpen</span>
+            <input type="range" min="0" max="100" step="1" value="0" data-key="sharpen">
+            <output>0</output>
+          </label>
+          <label>
+            <span>Denoise</span>
+            <input type="range" min="0" max="100" step="1" value="0" data-key="denoise">
+            <output>0</output>
+          </label>
+
+          <label class="row">
+            <span>White Balance</span>
+            <select data-key="wb_preset">
+              <option value="as_shot">As Shot</option>
+              <option value="auto">Auto</option>
+              <option value="daylight">Daylight</option>
+              <option value="tungsten">Tungsten</option>
+              <option value="shade">Shade</option>
+            </select>
+          </label>
+
+          <label class="row toggle">
+            <span>AI Deblur (applies on Save)</span>
+            <input type="checkbox" data-key="ai_deblur">
+          </label>
+        </div>
+
+        <canvas id="histogram" width="240" height="50"></canvas>
+
+        <div class="save-row">
+          <select id="save-format">
+            <option value="jpeg">JPEG</option>
+            <option value="png">PNG</option>
+            <option value="tiff">TIFF</option>
+          </select>
+          <button id="btn-save" disabled>Save</button>
+        </div>
+        <p class="status" id="status"></p>
+      </aside>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
