@@ -31,11 +31,22 @@ from numpy.typing import NDArray
 from PIL import Image as PILImage
 from PIL import ImageOps
 
+# Register HEIF/HEIC support with Pillow at import time. Safe to skip if the
+# wheel is unavailable — HEIC simply won't be in SUPPORTED_EXTENSIONS.
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+    _HEIC_EXTENSIONS = {".heic", ".heif"}
+except Exception:  # noqa: BLE001
+    _HEIC_EXTENSIONS = set()
+
 Image = NDArray[np.float32]
 
 RAW_EXTENSIONS = {".raf", ".dng", ".arw", ".nef", ".cr2", ".cr3", ".orf", ".rw2"}
 TIFF_EXTENSIONS = {".tif", ".tiff"}
-SUPPORTED_EXTENSIONS = RAW_EXTENSIONS | TIFF_EXTENSIONS | {".jpg", ".jpeg", ".png"}
+SUPPORTED_EXTENSIONS = (
+    RAW_EXTENSIONS | TIFF_EXTENSIONS | _HEIC_EXTENSIONS | {".jpg", ".jpeg", ".png"}
+)
 
 MAX_MEGAPIXELS = 100  # reject inputs above this; some pixel-shift RAFs are huge
 

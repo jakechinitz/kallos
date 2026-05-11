@@ -182,7 +182,7 @@ async def save(payload: dict[str, Any]) -> JSONResponse:
 
     output_dir = Path(payload.get("output_dir", str(Path.home() / "Pictures" / "kallos")))
     output_dir.mkdir(parents=True, exist_ok=True)
-    ext = {"jpeg": ".jpg", "png": ".png", "tiff": ".tif"}[fmt.value]
+    ext = {"jpeg": ".jpg", "png": ".png", "tiff": ".tif", "heic": ".heic"}[fmt.value]
     out_path = output_dir / f"{_session.source_name}_kallos{ext}"
 
     _session.settings = settings

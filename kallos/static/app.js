@@ -41,7 +41,6 @@
   const btnCompare = $("#btn-compare");
   const btnSave    = $("#btn-save");
   const status     = $("#status");
-  const histogram  = $("#histogram");
   const filenameEl = $("#filename");
   const formatSelect = $("#save-format");
   const sliderInputs = $$("input[type='range'][data-key]");
@@ -103,7 +102,6 @@
     imgSlO.src  = "/original.jpg";
     setStatus("");
     renderPreview();
-    refreshHistogram();
   }
 
   // --- render ---
@@ -132,32 +130,6 @@
 
   const debouncedRender = debounce(renderPreview, 80);
 
-  async function refreshHistogram() {
-    if (!state.loaded) return;
-    try {
-      const res = await fetch("/histogram.json");
-      if (!res.ok) return;
-      const data = await res.json();
-      drawHistogram(data.bins);
-    } catch { /* ignore — non-essential */ }
-  }
-
-  const debouncedHistogram = debounce(refreshHistogram, 200);
-
-  function drawHistogram(bins) {
-    const ctx = histogram.getContext("2d");
-    const w = histogram.width;
-    const h = histogram.height;
-    ctx.clearRect(0, 0, w, h);
-    const max = Math.max(1, ...bins);
-    const bw = w / bins.length;
-    ctx.fillStyle = "#6cd28a";
-    for (let i = 0; i < bins.length; i++) {
-      const bh = (bins[i] / max) * h;
-      ctx.fillRect(i * bw, h - bh, bw - 0.5, bh);
-    }
-  }
-
   // --- controls ---
 
   function syncControlsFromState() {
@@ -182,14 +154,12 @@
         state.settings[key] = v;
         inp.nextElementSibling.value = inp.value;
         debouncedRender();
-        debouncedHistogram();
       });
     }
     for (const sel of selectInputs) {
       sel.addEventListener("change", () => {
         state.settings[sel.dataset.key] = sel.value;
         renderPreview();
-        refreshHistogram();
       });
     }
     for (const cb of checkInputs) {
@@ -212,7 +182,6 @@
       state.settings = { ...state.settings, ...(await res.json()) };
       syncControlsFromState();
       await renderPreview();
-      refreshHistogram();
       setStatus("Auto Enhance applied.");
     } catch (err) {
       setStatus(`Auto failed: ${err.message}`, true);
@@ -226,7 +195,6 @@
     state.settings = (await res.json()).settings;
     syncControlsFromState();
     renderPreview();
-    refreshHistogram();
     setStatus("Reset to original.");
   });
 

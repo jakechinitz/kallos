@@ -23,6 +23,14 @@ from numpy.typing import NDArray
 from PIL import Image as PILImage
 from PIL import ImageCms
 
+# Register HEIF/HEIC support with Pillow at import time.
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+    _HEIC_AVAILABLE = True
+except Exception:  # noqa: BLE001 — falls back gracefully if the wheel is missing
+    _HEIC_AVAILABLE = False
+
 Image = NDArray[np.float32]
 
 
@@ -30,6 +38,7 @@ class SaveFormat(str, Enum):
     JPEG = "jpeg"
     PNG = "png"
     TIFF = "tiff"
+    HEIC = "heic"
 
 
 # Build an sRGB profile once at import; it's ~3KB and shared across all saves.
@@ -74,8 +83,17 @@ def save_image(
             kwargs["quality"] = jpeg_quality
             kwargs["subsampling"] = 0  # 4:4:4 — keep sharp edges crisp
             pil.save(out, format="JPEG", **kwargs)
-        else:
+        elif fmt == SaveFormat.PNG:
             pil.save(out, format="PNG", **kwargs)
+        elif fmt == SaveFormat.HEIC:
+            if not _HEIC_AVAILABLE:
+                raise RuntimeError(
+                    "HEIC support not installed. Run `pip install pillow-heif`."
+                )
+            # HEIC quality scale: 50–95 maps to "good–transparent" for HEIC.
+            # We map the JPEG quality kwarg roughly the same way.
+            kwargs["quality"] = jpeg_quality
+            pil.save(out, format="HEIF", **kwargs)
 
     return out
 
