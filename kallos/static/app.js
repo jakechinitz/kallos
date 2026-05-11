@@ -16,7 +16,7 @@
 
   function defaultSettings() {
     return {
-      brightness: 0, contrast: 0, warmth: 0, vibrance: 0,
+      brightness: 0, contrast: 0, warmth: 0, vibrance: 0, clarity: 0,
       sharpen: 0, denoise: 0, ai_deblur: false, wb_preset: "as_shot",
     };
   }

@@ -98,6 +98,14 @@ def test_jpeg_path_is_lighter_than_raw_path(small_image):
     assert jpg.contrast == raw.contrast
 
 
+def test_jpeg_gets_more_clarity_than_raw(small_image):
+    # Clarity is the iPhone-look ingredient the camera doesn't apply,
+    # so the JPEG path leans into it harder than the RAW path.
+    raw = auto_settings(small_image, is_raw=True)
+    jpg = auto_settings(small_image, is_raw=False)
+    assert jpg.clarity > raw.clarity
+
+
 def test_jpeg_ignores_iso_for_denoise(small_image):
     # On a JPEG, the camera already denoised — high ISO shouldn't crank
     # kallos's denoise on top.

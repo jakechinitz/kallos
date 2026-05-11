@@ -16,7 +16,7 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
-from kallos.ops import color, denoise, sharpen, tone, wb
+from kallos.ops import clarity, color, denoise, sharpen, tone, wb
 from kallos.ops.deblur import apply_deblur
 from kallos.state import Session, Settings
 
@@ -40,6 +40,7 @@ def render_preview(session: Session) -> Image:
         x = session.intermediate
 
     x = tone.apply_contrast(x, s.contrast)
+    x = clarity.apply_clarity(x, s.clarity)
     x = sharpen.apply_sharpen(x, s.sharpen)
     x = color.apply_vibrance(x, s.vibrance)
     return x
@@ -61,6 +62,7 @@ def render_final(session: Session, *, source: Image | None = None) -> Image:
     if s.ai_deblur:
         x = apply_deblur(x, use_ai=True)
     x = tone.apply_contrast(x, s.contrast)
+    x = clarity.apply_clarity(x, s.clarity)
     x = sharpen.apply_sharpen(x, s.sharpen)
     x = color.apply_vibrance(x, s.vibrance)
     return x

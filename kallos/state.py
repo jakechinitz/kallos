@@ -27,6 +27,7 @@ class Settings:
     contrast: float = 0.0        # -100..+100  -> S-curve strength
     warmth: float = 0.0          # -100..+100  -> ±1500K offset on top of wb_preset
     vibrance: float = 0.0        # -100..+100  -> skin-protected saturation
+    clarity: float = 0.0         # -100..+100  -> midtone local-contrast (iPhone-like "pop")
     sharpen: float = 0.0         # 0..100      -> unsharp mask amount
     denoise: float = 0.0         # 0..100      -> NL-means strength
     ai_deblur: bool = False      # toggle; applied on Save only

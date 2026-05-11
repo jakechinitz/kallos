@@ -78,12 +78,16 @@ def auto_settings(
         warmth = _choose_warmth(stats)
         sharpen = _choose_sharpen(stats, exif)
         denoise = _choose_denoise(stats, exif)
+        clarity = 12.0           # gentle presence — RAW pipeline is already detailed
         vibrance = 8.0
     else:
-        # JPEG: lighter touch — camera already sharpened, denoised, WB'd.
+        # JPEG: lighter touch on what the camera did (sharpen, denoise, WB),
+        # but *heavier* clarity — it's the one thing the camera doesn't do and
+        # it's what makes JPEGs feel iPhone-crisp when you zoom in.
         warmth = _choose_warmth_jpeg(stats)
         sharpen = _choose_sharpen_jpeg(stats, exif)
-        denoise = 0.0            # camera already denoised; more would soften text
+        denoise = 0.0
+        clarity = 25.0
         vibrance = 4.0
 
     return Settings(
@@ -91,6 +95,7 @@ def auto_settings(
         contrast=round(contrast, 1),
         warmth=round(warmth, 1),
         vibrance=vibrance,
+        clarity=clarity,
         sharpen=round(sharpen, 1),
         denoise=round(denoise, 1),
         ai_deblur=deblur,
