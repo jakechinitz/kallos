@@ -6,8 +6,17 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 if ! command -v python3 >/dev/null 2>&1; then
-    echo "kallos needs Python 3.10+."
+    echo "kallos needs Python 3.10 or newer."
     echo "Install it from https://www.python.org/downloads/ then run this again."
+    exit 1
+fi
+
+# Accept any Python 3.10+ — whatever the user has installed (3.10 through
+# 3.13 and beyond). The venv we create will use this interpreter.
+if ! python3 -c "import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)" >/dev/null 2>&1; then
+    echo "Your Python is too old. kallos needs 3.10 or newer."
+    echo "You have: $(python3 --version 2>&1)"
+    echo "Install a newer Python from https://www.python.org/downloads/ then run this again."
     exit 1
 fi
 
