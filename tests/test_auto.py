@@ -49,28 +49,42 @@ def test_raw_path_balances_clarity_and_sharpen(small_image):
     assert raw.sharpen > jpg.sharpen
 
 
-def test_slow_shutter_with_long_lens_enables_deblur(small_image):
+def test_slow_shutter_with_long_lens_enables_deblur(small_image, monkeypatch):
+    # Auto only enables AI Deblur when (a) the shot looks shaky AND (b) a
+    # model is available. Mock the latter so we're testing the shake logic.
+    monkeypatch.setattr("kallos.auto.has_deblur_model", lambda: True)
     shaky = auto_settings(small_image, exif=ExifSummary(
         focal_length_35mm=200, shutter_seconds=1 / 60,
     ))
     assert shaky.ai_deblur is True
 
 
-def test_fast_shutter_keeps_deblur_off(small_image):
+def test_fast_shutter_keeps_deblur_off(small_image, monkeypatch):
+    monkeypatch.setattr("kallos.auto.has_deblur_model", lambda: True)
     crisp = auto_settings(small_image, exif=ExifSummary(
         focal_length_35mm=50, shutter_seconds=1 / 500,
     ))
     assert crisp.ai_deblur is False
 
 
-def test_deblur_works_for_jpeg_too(small_image):
-    # The one thing the camera can't fix — must auto-trigger regardless of source.
+def test_deblur_works_for_jpeg_too(small_image, monkeypatch):
+    monkeypatch.setattr("kallos.auto.has_deblur_model", lambda: True)
     s = auto_settings(
         small_image,
         exif=ExifSummary(focal_length_35mm=200, shutter_seconds=1 / 60),
         is_raw=False,
     )
     assert s.ai_deblur is True
+
+
+def test_deblur_stays_off_when_no_model_even_if_shaky(small_image, monkeypatch):
+    """Without a real model, a 'deblur on' toggle would do nothing — Auto
+    shouldn't lie about it."""
+    monkeypatch.setattr("kallos.auto.has_deblur_model", lambda: False)
+    s = auto_settings(small_image, exif=ExifSummary(
+        focal_length_35mm=200, shutter_seconds=1 / 60,
+    ))
+    assert s.ai_deblur is False
 
 
 def test_no_exif_keeps_deblur_off(small_image):

@@ -2,6 +2,9 @@
 
 Works in HSV. Boosts low-saturation pixels more than high-saturation ones, and
 attenuates the boost in the skin-tone hue range (~15°–45° in HSV degrees).
+
+cv2's RGB<->HSV expects sRGB-encoded input, so we encode-then-decode around
+the conversion to avoid the tonal shift you'd get from passing linear values.
 """
 
 from __future__ import annotations
@@ -9,6 +12,8 @@ from __future__ import annotations
 import cv2
 import numpy as np
 from numpy.typing import NDArray
+
+from kallos.ops._color import linear_to_srgb, srgb_to_linear
 
 Image = NDArray[np.float32]
 
@@ -18,8 +23,8 @@ def apply_vibrance(img: Image, amount: float) -> Image:
     if amount == 0:
         return img
 
-    # cv2.cvtColor expects float32 in [0,1] for sRGB-linear-ish data.
-    hsv = cv2.cvtColor(img.astype(np.float32), cv2.COLOR_RGB2HSV)
+    srgb = linear_to_srgb(img)
+    hsv = cv2.cvtColor(srgb, cv2.COLOR_RGB2HSV)
     h = hsv[:, :, 0]  # 0..360
     s = hsv[:, :, 1]  # 0..1
 
@@ -30,10 +35,13 @@ def apply_vibrance(img: Image, amount: float) -> Image:
     # Protect skin tones: hues near 15..45 degrees get a softer touch.
     skin_mask = np.exp(-(((h - 30.0) / 25.0) ** 2))  # gaussian centered at 30°
     weight = weight * (1.0 - 0.6 * skin_mask)
+    # Don't invent saturation on near-gray pixels — hue is undefined for gray
+    # so any "lift" would turn it red (HSV with H=0). Ramp in with s.
+    weight = weight * np.minimum(s * 4.0, 1.0)
 
     delta = strength * weight
     new_s = np.clip(s + delta, 0.0, 1.0)
     hsv[:, :, 1] = new_s
 
-    out = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
-    return np.clip(out, 0.0, None).astype(np.float32)
+    out_srgb = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+    return srgb_to_linear(np.clip(out_srgb, 0.0, 1.0))

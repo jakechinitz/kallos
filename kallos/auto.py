@@ -23,6 +23,7 @@ Advanced sliders are for — but Auto won't surprise you with them.
 from __future__ import annotations
 
 from kallos.io.load import ExifSummary
+from kallos.ops.deblur import has_deblur_model
 from kallos.state import Settings
 
 
@@ -57,7 +58,10 @@ def auto_settings(
         clarity=clarity,
         sharpen=sharpen,
         denoise=0.0,
-        ai_deblur=_looks_shaky(exif),
+        # Only auto-enable deblur when (a) the shot looks shaky AND (b) we
+        # actually have a model that can help. Without a model the toggle is
+        # a no-op and lighting it up would just be a lie.
+        ai_deblur=_looks_shaky(exif) and has_deblur_model(),
         wb_preset="as_shot",
     )
 
@@ -83,9 +87,10 @@ def auto_for_text(
         clarity=30.0,
         sharpen=50.0,
         denoise=0.0,
-        # Always-on for text — even if EXIF doesn't flag shake, deblur tends
-        # to help text legibility more than it hurts anything else.
-        ai_deblur=True,
+        # Enable deblur only if a real model is available; without one it'd
+        # be a no-op (the Wiener fallback was removed because it tended to
+        # degrade text instead of recover it).
+        ai_deblur=has_deblur_model(),
         wb_preset="as_shot",
     )
 

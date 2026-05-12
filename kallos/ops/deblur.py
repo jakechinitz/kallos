@@ -1,23 +1,22 @@
-"""AI deblur via ONNX runtime, with a classical Wiener-deconvolution fallback.
+"""AI deblur via ONNX runtime.
 
-The primary path is a pretrained motion-deblur model (NAFNet trained on the
-REDS dataset). The model weights are downloaded on first use to
-~/.cache/kallos/models/ and run through onnxruntime CPU.
+The primary (and currently only) path is a pretrained motion-deblur model
+(NAFNet trained on the REDS dataset). Drop the ONNX file into
+~/.cache/kallos/models/nafnet_motion_deblur.onnx and the toggle lights up.
 
-The fallback is a Wiener deconvolution with an estimated linear-motion PSF.
-It's deterministic, fast, and surprisingly OK for short handheld shake; it
-runs automatically when the ONNX model can't be loaded (offline, download
-failed, or the user prefers no-ML).
-
-This op is heavier than the others, so it's invoked only on the Save path
-(or via a small "preview deblur" button on a center crop).
+Without a model present, AI Deblur is a no-op. We used to fall back to
+Wiener deconvolution with a fixed-PSF guess (11-px horizontal motion) but
+that assumption is wrong for almost all real handheld shake, and the
+resulting ringing + amplified noise made images visibly worse than the
+input. Better to leave the photo alone than degrade it under a 'deblur'
+label. The Wiener routine is still in this file as `_wiener_fallback` for
+anyone who wants to opt in via code, but nothing calls it by default.
 """
 
 from __future__ import annotations
 
 import math
 
-import cv2
 import numpy as np
 from numpy.typing import NDArray
 
@@ -26,14 +25,22 @@ from kallos.models.registry import OnnxSession, try_load_deblur_model
 Image = NDArray[np.float32]
 
 
+def has_deblur_model() -> bool:
+    """Cheap check: is a real ONNX model available? Used by Auto Enhance to
+    decide whether to enable the AI Deblur toggle."""
+    return try_load_deblur_model() is not None
+
+
 def apply_deblur(img: Image, *, use_ai: bool = True) -> Image:
-    """Run deblur on the full image. If the AI model is unavailable, falls
-    back to Wiener deconvolution with an estimated PSF."""
-    if use_ai:
-        session = try_load_deblur_model()
-        if session is not None:
-            return _run_onnx_tiled(img, session)
-    return _wiener_fallback(img)
+    """Run deblur. If no AI model is present, returns input unchanged
+    (Wiener fallback was removed because wrong-PSF deconvolution hurts more
+    than it helps)."""
+    if not use_ai:
+        return img
+    session = try_load_deblur_model()
+    if session is None:
+        return img
+    return _run_onnx_tiled(img, session)
 
 
 def _run_onnx_tiled(
@@ -84,11 +91,9 @@ def _feather_mask(tile: int, overlap: int) -> NDArray[np.float32]:
 
 
 def _wiener_fallback(img: Image, *, angle_deg: float = 0.0, length: int = 11) -> Image:
-    """Wiener deconvolution with an estimated linear-motion PSF.
-
-    angle/length default to a small horizontal blur — a reasonable guess for
-    handheld shots without knowing the actual motion. In practice this gives
-    a mild deblur that still helps text legibility.
+    """Wiener deconvolution with a fixed linear-motion PSF guess. NOT USED by
+    default — see module docstring. Left here as a reference implementation
+    for anyone experimenting with classical deblur.
     """
     psf = _motion_psf(length=length, angle_deg=angle_deg)
     out = np.empty_like(img)
@@ -111,9 +116,9 @@ def _motion_psf(length: int, angle_deg: float) -> NDArray[np.float32]:
     return psf / s if s > 0 else psf
 
 
-def _wiener_channel(channel: NDArray[np.float32], psf: NDArray[np.float32], k: float) -> NDArray[np.float32]:
-    h, w = channel.shape
-    # Pad PSF to image size and center via fftshift.
+def _wiener_channel(
+    channel: NDArray[np.float32], psf: NDArray[np.float32], k: float
+) -> NDArray[np.float32]:
     psf_padded = np.zeros_like(channel)
     ph, pw = psf.shape
     psf_padded[:ph, :pw] = psf
@@ -126,5 +131,3 @@ def _wiener_channel(channel: NDArray[np.float32], psf: NDArray[np.float32], k: f
     denom = H * H_conj + k
     F = (H_conj / denom) * G
     return np.real(np.fft.ifft2(F)).astype(np.float32)
-
-

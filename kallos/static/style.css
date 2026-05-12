@@ -16,6 +16,11 @@
 
 * { box-sizing: border-box; }
 
+/* HTML's `hidden` attribute must override class-level display rules. Without
+   this, .dropzone (display: flex) and .view (display: flex) stay visible
+   even when hidden=true, and you get all three Compare modes stacked. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;
