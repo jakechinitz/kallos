@@ -38,14 +38,50 @@ if errorlevel 1 (
 )
 
 if not exist ".venv" (
-    echo Setting up kallos for the first time. This takes about 30 seconds.
+    echo Setting up kallos for the first time. This takes 1-2 minutes.
     echo Windows Defender may scan the new files - that is normal.
+    echo.
     %PYCMD% -m venv .venv
+    if errorlevel 1 (
+        echo.
+        echo Could not create the virtual environment.
+        echo If the folder is on OneDrive, move it somewhere local first.
+        pause
+        exit /b 1
+    )
     call .venv\Scripts\activate.bat
-    python -m pip install --upgrade pip --quiet
-    python -m pip install -r requirements.txt --quiet
+    python -m pip install --upgrade pip
+    python -m pip install -r requirements.txt
+    if errorlevel 1 (
+        echo.
+        echo Dependency install failed. Read the messages above to see what went wrong.
+        echo Common causes:
+        echo   - Folder is on OneDrive   ^(move it somewhere local^)
+        echo   - No internet connection
+        echo   - A package wheel isn't available for your Python version
+        echo.
+        echo You can retry by deleting the .venv folder and running this script again.
+        pause
+        exit /b 1
+    )
 ) else (
     call .venv\Scripts\activate.bat
+)
+
+REM Self-heal: if the venv exists but is missing a key package, reinstall.
+REM This catches the case where an earlier launch's install half-finished.
+python -c "import uvicorn, kallos" >nul 2>&1
+if errorlevel 1 (
+    echo.
+    echo Dependencies look incomplete - reinstalling...
+    python -m pip install -r requirements.txt
+    if errorlevel 1 (
+        echo.
+        echo Dependency install failed again. Try deleting the .venv folder
+        echo and running this script fresh.
+        pause
+        exit /b 1
+    )
 )
 
 python -m kallos
