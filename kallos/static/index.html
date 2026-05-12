@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>kallos</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <!-- v=4 cache-bust; bump when CSS/JS changes so browsers don't serve stale UI -->
+  <link rel="stylesheet" href="/static/style.css?v=4">
 </head>
 <body>
   <div id="app">
@@ -130,16 +131,17 @@
         <div class="save-row">
           <select id="save-format">
             <option value="jpeg">JPEG — best for sharing</option>
+            <option value="heic">HEIC — iPhone-native (if available)</option>
             <option value="png">PNG — lossless 8-bit</option>
             <option value="tiff">TIFF — archival 16-bit</option>
           </select>
-          <button id="btn-save" disabled>Save</button>
+          <button id="btn-save" disabled>Download</button>
         </div>
         <p class="status" id="status"></p>
       </aside>
     </main>
   </div>
 
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=4"></script>
 </body>
 </html>

@@ -260,14 +260,36 @@
         }),
       });
       if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      setStatus(`Saved to ${data.path}`);
+
+      // Pull the suggested filename out of Content-Disposition so the browser
+      // saves it as e.g. "bookshelf_kallos.jpg" — not a UUID.
+      const filename = filenameFromContentDisposition(res.headers.get("content-disposition"))
+        || `kallos.${formatSelect.value === "jpeg" ? "jpg" : formatSelect.value}`;
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      // Free the blob a tick later — some browsers need the click to settle first.
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+
+      setStatus(`Downloaded ${filename}.`);
     } catch (err) {
       setStatus(`Save failed: ${err.message}`, true);
     } finally {
       btnSave.disabled = false;
     }
   });
+
+  function filenameFromContentDisposition(header) {
+    if (!header) return null;
+    const match = /filename="([^"]+)"/.exec(header);
+    return match ? match[1] : null;
+  }
 
   // --- helpers ---
 

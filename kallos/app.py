@@ -5,10 +5,10 @@ Endpoints:
 - POST /upload                 — multipart upload; returns dimensions + WB info
 - POST /render                 — body: settings JSON; returns a JPEG preview
 - POST /auto                   — returns auto-suggested Settings for the session
-- POST /save                   — body: settings + format; writes full-res to disk, returns path
+- POST /save                   — body: settings + format; streams the saved file
+                                 back as a download (Content-Disposition)
 - POST /reset                  — clears the session
 - GET  /original.jpg           — preview JPEG of the untouched original
-- GET  /histogram.json         — luminance histogram of the current preview
 
 The state is a single in-process Session — this is a local app for one user,
 not a multi-tenant service. Keeping it singleton-y means no auth, no DB, no
@@ -24,14 +24,13 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from PIL import Image as PILImage
 
 from kallos.auto import auto_for_text, auto_settings
-from kallos.io import SaveFormat, save_image
+from kallos.io import EXTENSION, MIME_TYPE, SaveFormat, serialize_image
 from kallos.io.load import RAW_EXTENSIONS, load_image, load_image_from_bytes
 from kallos.pipeline import encode_for_display, render_final, render_preview
 from kallos.state import Session, Settings
@@ -42,6 +41,21 @@ app = FastAPI(title="kallos")
 
 # In-memory state for the single open image.
 _session: Session | None = None
+
+
+# ---------------------------------------------------------------------------
+# No-cache for everything (this is a local single-user dev tool; the cost of
+# a fresh fetch is zero, the cost of a stale UI is real — see commit history
+# for the time the bug fixes "didn't land" because of browser caching).
+# ---------------------------------------------------------------------------
+
+@app.middleware("http")
+async def no_cache(request: Request, call_next):  # type: ignore[no-untyped-def]
+    response = await call_next(request)
+    response.headers["cache-control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["pragma"] = "no-cache"
+    response.headers["expires"] = "0"
+    return response
 
 
 # ---------------------------------------------------------------------------
@@ -164,24 +178,17 @@ def original() -> Response:
     return Response(content=jpeg, media_type="image/jpeg")
 
 
-@app.get("/histogram.json")
-def histogram() -> JSONResponse:
-    if _session is None:
-        raise HTTPException(400, "No image loaded")
-    img = render_preview(_session)
-    # 64-bin luminance histogram in display-encoded space.
-    enc = encode_for_display(img)
-    lum = (0.2126 * enc[:, :, 0] + 0.7152 * enc[:, :, 1] + 0.0722 * enc[:, :, 2]).astype(np.uint8)
-    hist, _ = np.histogram(lum, bins=64, range=(0, 256))
-    return JSONResponse({"bins": hist.tolist()})
-
-
 # ---------------------------------------------------------------------------
-# Save
+# Save — streams the rendered file as a browser download
 # ---------------------------------------------------------------------------
 
 @app.post("/save")
-async def save(payload: dict[str, Any]) -> JSONResponse:
+async def save(payload: dict[str, Any]) -> Response:
+    """Render the full-resolution image and stream it as a download.
+
+    No disk write — the user's browser handles where to put the file
+    (their default Downloads folder, or wherever they pick).
+    """
     if _session is None:
         raise HTTPException(400, "No image loaded")
 
@@ -192,24 +199,27 @@ async def save(payload: dict[str, Any]) -> JSONResponse:
     except ValueError as exc:
         raise HTTPException(400, f"Unknown format: {fmt_name}") from exc
 
-    output_dir = Path(payload.get("output_dir", str(Path.home() / "Pictures" / "kallos")))
-    output_dir.mkdir(parents=True, exist_ok=True)
-    ext = {"jpeg": ".jpg", "png": ".png", "tiff": ".tif", "heic": ".heic"}[fmt.value]
-    out_path = output_dir / f"{_session.source_name}_kallos{ext}"
-
     _session.settings = settings
     full = _session.full_res if _session.full_res is not None else _session.original
     rendered = await asyncio.to_thread(lambda: render_final(_session, source=full))
 
-    save_image(rendered, out_path, fmt, exif_bytes=_session.exif_bytes)
-    return JSONResponse({"path": str(out_path)})
+    body = await asyncio.to_thread(
+        serialize_image, rendered, fmt, exif_bytes=_session.exif_bytes
+    )
+
+    filename = f"{_session.source_name}_kallos{EXTENSION[fmt]}"
+    return Response(
+        content=body,
+        media_type=MIME_TYPE[fmt],
+        headers={"content-disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ---------------------------------------------------------------------------
 # Internals
 # ---------------------------------------------------------------------------
 
-def _encode_jpeg(img: np.ndarray, *, quality: int) -> bytes:
+def _encode_jpeg(img, *, quality: int) -> bytes:  # type: ignore[no-untyped-def]
     """Encode a linear-RGB tensor as a JPEG byte string for the browser."""
     u8 = encode_for_display(img)
     pil = PILImage.fromarray(u8, mode="RGB")
