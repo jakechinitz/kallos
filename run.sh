@@ -33,6 +33,14 @@ if [ ! -d "$VENV" ]; then
         echo "You can retry by deleting the .venv folder and running this script again."
         exit 1
     fi
+    # Best-effort: try to add HEIC support. Failure is fine — JPEG/PNG/TIFF/RAF
+    # all still work without it.
+    if ! python -m pip install "pillow-heif>=0.18,<2" --only-binary=:all: >/dev/null 2>&1; then
+        echo
+        echo "Note: HEIC reading is unavailable for this Python version."
+        echo "This is fine — JPEG, PNG, TIFF, and Fuji RAF all still work."
+        echo
+    fi
 else
     # shellcheck disable=SC1091
     source "$VENV/bin/activate"
