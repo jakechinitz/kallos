@@ -72,3 +72,35 @@ def test_encode_for_display_returns_uint8(small_image):
     enc = encode_for_display(small_image)
     assert enc.dtype == np.uint8
     assert enc.shape == small_image.shape
+
+
+def test_clarity_does_not_shift_neutral_gray():
+    """Regression test for the color-space bug where Clarity ran cv2 Lab
+    conversion on linear data instead of sRGB-encoded data, causing a
+    visible tonal/color shift even on flat fields. A flat gray image must
+    stay flat gray under any clarity amount."""
+    from kallos.ops.clarity import apply_clarity
+
+    flat = np.full((64, 64, 3), 0.18, dtype=np.float32)  # mid-gray, linear
+    out = apply_clarity(flat, 50)
+    # No spatial structure -> detail = 0 -> output should be very close to input.
+    assert np.abs(out - flat).max() < 0.01
+
+
+def test_sharpen_does_not_shift_flat_field():
+    """Same regression for Sharpen — a flat field has no edges, so Sharpen
+    must produce essentially the input back regardless of amount."""
+    from kallos.ops.sharpen import apply_sharpen
+
+    flat = np.full((64, 64, 3), 0.4, dtype=np.float32)
+    out = apply_sharpen(flat, 80)
+    assert np.abs(out - flat).max() < 0.01
+
+
+def test_vibrance_does_not_shift_neutral_gray():
+    """Vibrance on pure gray has zero saturation to boost; output must match input."""
+    from kallos.ops.color import apply_vibrance
+
+    gray = np.full((64, 64, 3), 0.4, dtype=np.float32)
+    out = apply_vibrance(gray, 80)
+    assert np.abs(out - gray).max() < 0.01
