@@ -22,15 +22,31 @@ fi
 
 VENV=".venv"
 if [ ! -d "$VENV" ]; then
-    echo "Setting up kallos for the first time. This takes about 30 seconds..."
+    echo "Setting up kallos for the first time. This takes 1-2 minutes..."
     python3 -m venv "$VENV"
     # shellcheck disable=SC1091
     source "$VENV/bin/activate"
-    python -m pip install --upgrade pip --quiet
-    python -m pip install -r requirements.txt --quiet
+    python -m pip install --upgrade pip
+    if ! python -m pip install -r requirements.txt; then
+        echo
+        echo "Dependency install failed. Read the messages above to see what went wrong."
+        echo "You can retry by deleting the .venv folder and running this script again."
+        exit 1
+    fi
 else
     # shellcheck disable=SC1091
     source "$VENV/bin/activate"
+fi
+
+# Self-heal: if the venv exists but is missing a key package, reinstall.
+# Catches the case where an earlier launch's install half-finished.
+if ! python -c "import uvicorn, kallos" >/dev/null 2>&1; then
+    echo "Dependencies look incomplete - reinstalling..."
+    if ! python -m pip install -r requirements.txt; then
+        echo
+        echo "Dependency install failed. Try deleting the .venv folder and running fresh."
+        exit 1
+    fi
 fi
 
 exec python -m kallos
