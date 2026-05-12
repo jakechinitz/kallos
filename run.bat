@@ -64,6 +64,15 @@ if not exist ".venv" (
         pause
         exit /b 1
     )
+    REM Best-effort: try to add HEIC support. Failure is fine -- HEIC just
+    REM won't be available for reading. JPEG/PNG/TIFF/RAF still work.
+    python -m pip install "pillow-heif>=0.18,<2" --only-binary=:all: >nul 2>&1
+    if errorlevel 1 (
+        echo.
+        echo Note: HEIC reading is unavailable for this Python version.
+        echo This is fine - JPEG, PNG, TIFF, and Fuji RAF all still work.
+        echo.
+    )
 ) else (
     call .venv\Scripts\activate.bat
 )
